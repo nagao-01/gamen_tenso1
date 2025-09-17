@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Desktop Screen Share</title>
+</head>
+<body>
+    <p>Your Peer ID: <span id="my-id">Loading...</span></p>
+    <input type="text" id="peer-id-input" placeholder="Enter peer ID to call">
+    <button onclick="startSharing()">Share My Screen</button>
+
+    <br><br>
+    <video id="localVideo" autoplay muted style="width: 45%; border: 1px solid gray;"></video>
+    <video id="remoteVideo" autoplay style="width: 45%; border: 1px solid gray;"></video>
+
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script>
+        const peer = new Peer(undefined, {
+            host: location.hostname,
+            port: 3000,
+            path: '/peerjs'
+        });
+
+        let localStream;
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+
+        peer.on('open', id => {
+            console.log('My peer ID is:', id);
+            document.getElementById('my-id').textContent = id;
+        });
+
+        peer.on('call', call => {
+            // 画面共有の受信側
+            call.answer();
+            call.on('stream', stream => {
+                remoteVideo.srcObject = stream;
+            });
+        });
+
+	function startSharing() {
+	    const peerIdToCall = document.getElementById('peer-id-input').value;
+	    if (!peerIdToCall) {
+	        alert('相手のPeer IDを入力してください');
+	        return;
+	    }
+
+	    navigator.mediaDevices.getDisplayMedia({
+	        video: {
+	            displaySurface: "monitor",
+	            logicalSurface: true,
+	            cursor: "always"
+	        },
+	        audio: false
+	    }).then(stream => {
+	        const call = peer.call(peerIdToCall, stream);
+	        call.on('stream', remoteStream => {
+	            document.getElementById('remoteVideo').srcObject = remoteStream;
+	        });
+	    }).catch(err => {
+	        console.error('Screen share error:', err);
+	        alert('画面共有に失敗しました：' + err.message);
+	    });
+	}
+
+
+        peer.on('error', err => {
+            console.error('PeerJS error:', err);
+        });
+    </script>
+</body>
+</html>
